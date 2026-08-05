@@ -2669,7 +2669,10 @@ public class RoaringBitmap
         size += this.highLowContainer.getContainerAtIndex(i).getCardinality();
       } else if (key == xhigh) {
         return size
-            + this.highLowContainer.getContainerAtIndex(i).rank(Util.lowbits((int) (end - 1)));
+            + (Util.lowbits(end - 1) != (char) 0xFFFF
+                ? this.highLowContainer.getContainerAtIndex(i).rank(Util.lowbits((int) (end - 1)))
+                : this.highLowContainer.getContainerAtIndex(i).getCardinality()
+        );
       } else {
         break;
       }
@@ -3457,5 +3460,32 @@ public class RoaringBitmap
   @Override
   public int getContainerCount() {
     return highLowContainer.size();
+  }
+  
+  /**
+   * Returns the cardinality of a certain container.
+   *
+   * @param containerKey key of the container in int (0~65535)
+   * @return the cardinality of the container;
+   *     or 0 if the container does not exist or is empty;
+   *     or -1 if the containerKey is not valid
+   */
+  public int containerCardinality(int containerKey) {
+    if (containerKey > 65535 || containerKey < 0) {
+      return -1;
+    }
+    return containerCardinality((char) containerKey);
+  }
+  
+  /**
+   * Returns the cardinality of a certain container.
+   *
+   * @param containerKey key of the container in char
+   * @return the cardinality of the container;
+   *     or 0 if the container does not exist or is empty
+   */
+  public int containerCardinality(char containerKey) {
+    int index = this.highLowContainer.getIndex(containerKey);
+    return index < 0 ? 0 : this.highLowContainer.getContainerAtIndex(index).getCardinality();
   }
 }
