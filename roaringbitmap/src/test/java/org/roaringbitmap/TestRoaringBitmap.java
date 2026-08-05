@@ -126,15 +126,22 @@ public class TestRoaringBitmap {
   public void testContainerCardinalityMatchesRangeCardinality() {
     Random rnd = new Random(114514);
     RoaringBitmap r = new RoaringBitmap();
+    // record the expected cardinality of every container key
+    int[] expected = new int[1 << 16];
     for (int k = 0; k < 100000; k++) {
-      r.add(rnd.nextInt());
+      int value = rnd.nextInt();
+      if (!r.contains(value)) {
+        r.add(value);
+        expected[Util.highbits(value)]++;
+      }
     }
     ContainerPointer p = r.getContainerPointer();
     while (p.getContainer() != null) {
       int key = p.key();
       long start = (long) key << 16;
       long end = ((long) key + 1) << 16;
-      assertEquals(r.rangeCardinality(start, end), r.containerCardinality((char) key));
+      assertEquals(expected[key], r.containerCardinality((char) key));
+      assertEquals(expected[key], r.rangeCardinality(start, end));
       p.advance();
     }
   }
