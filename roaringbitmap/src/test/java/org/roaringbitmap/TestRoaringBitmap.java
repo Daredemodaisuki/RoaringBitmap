@@ -89,6 +89,57 @@ public class TestRoaringBitmap {
   }
 
   @Test
+  public void testRangeCardinalityFullContainerRange() {
+    Random rnd = new Random(844);
+    RoaringBitmap r = new RoaringBitmap();
+    for (int k = 0; k < 100000; k++) {
+      r.add(rnd.nextInt());
+    }
+    ContainerPointer p = r.getContainerPointer();
+    while (p.getContainer() != null) {
+      int key = p.key(); // char needs to be interpreted as unsigned
+      long start = (long) key << 16;
+      long end = ((long) key + 1) << 16; // start of the next container
+      assertEquals(p.getCardinality(), r.rangeCardinality(start, end));
+      p.advance();
+    }
+  }
+
+  @Test
+  public void testContainerCardinality() {
+    RoaringBitmap r = new RoaringBitmap();
+    // empty bitmap: any key returns 0
+    assertEquals(0, r.containerCardinality((char) 0));
+    // hit: the container with key 0 holds 100 values
+    r.add(0L, 100L);
+    assertEquals(100, r.containerCardinality((char) 0));
+    // miss: the key is valid but no such container exists
+    assertEquals(0, r.containerCardinality((char) 1));
+    // int overload: hit / valid but missing / invalid input
+    assertEquals(100, r.containerCardinality(0));
+    assertEquals(0, r.containerCardinality(1000));
+    assertEquals(-1, r.containerCardinality(65536));
+    assertEquals(-1, r.containerCardinality(-1));
+  }
+
+  @Test
+  public void testContainerCardinalityMatchesRangeCardinality() {
+    Random rnd = new Random(114514);
+    RoaringBitmap r = new RoaringBitmap();
+    for (int k = 0; k < 100000; k++) {
+      r.add(rnd.nextInt());
+    }
+    ContainerPointer p = r.getContainerPointer();
+    while (p.getContainer() != null) {
+      int key = p.key();
+      long start = (long) key << 16;
+      long end = ((long) key + 1) << 16;
+      assertEquals(r.rangeCardinality(start, end), r.containerCardinality((char) key));
+      p.advance();
+    }
+  }
+
+  @Test
   public void testMultipleAdd() {
     RoaringBitmap bitmap = new RoaringBitmap();
     bitmap.add(1);
